@@ -8,10 +8,7 @@ import org.jellyfin.apiclient.interaction.Response
 import org.jellyfin.apiclient.model.dto.BaseItemDto
 import org.jellyfin.apiclient.model.dto.BaseItemType
 import org.jellyfin.apiclient.model.dto.UserItemDataDto
-import org.jellyfin.apiclient.model.querying.ItemQuery
-import org.jellyfin.apiclient.model.querying.ItemsResult
-import org.jellyfin.apiclient.model.querying.NextUpQuery
-import org.jellyfin.apiclient.model.querying.SimilarItemsQuery
+import org.jellyfin.apiclient.model.querying.*
 import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -48,24 +45,39 @@ suspend fun ApiClient.getItem(id: String): BaseItemDto? = suspendCoroutine { con
 	})
 }
 
-suspend fun ApiClient.markPlayed(itemId: String, userId: String, datePlayed: Date?) : UserItemDataDto? = suspendCoroutine { continuation ->
+suspend fun ApiClient.markPlayed(itemId: String, userId: String, datePlayed: Date?): UserItemDataDto? = suspendCoroutine { continuation ->
 	MarkPlayedAsync(itemId, userId, datePlayed, object : Response<UserItemDataDto>() {
-		override fun onResponse(response: UserItemDataDto?) { continuation.resume(response!!) }
-		override fun onError(exception: Exception?) { continuation.resume(null) }
+		override fun onResponse(response: UserItemDataDto?) {
+			continuation.resume(response!!)
+		}
+
+		override fun onError(exception: Exception?) {
+			continuation.resume(null)
+		}
 	})
 }
 
-suspend fun ApiClient.markUnplayed(itemId: String, userId: String) : UserItemDataDto? = suspendCoroutine { continuation ->
+suspend fun ApiClient.markUnplayed(itemId: String, userId: String): UserItemDataDto? = suspendCoroutine { continuation ->
 	MarkUnplayedAsync(itemId, userId, object : Response<UserItemDataDto>() {
-		override fun onResponse(response: UserItemDataDto?) { continuation.resume(response!!) }
-		override fun onError(exception: Exception?) { continuation.resume(null) }
+		override fun onResponse(response: UserItemDataDto?) {
+			continuation.resume(response!!)
+		}
+
+		override fun onError(exception: Exception?) {
+			continuation.resume(null)
+		}
 	})
 }
 
-suspend fun ApiClient.updateFavoriteStatus(itemId: String, userId: String, isFavorite: Boolean) : UserItemDataDto? = suspendCoroutine { continuation ->
+suspend fun ApiClient.updateFavoriteStatus(itemId: String, userId: String, isFavorite: Boolean): UserItemDataDto? = suspendCoroutine { continuation ->
 	UpdateFavoriteStatusAsync(itemId, userId, isFavorite, object : Response<UserItemDataDto>() {
-		override fun onResponse(response: UserItemDataDto?) { continuation.resume(response!!) }
-		override fun onError(exception: Exception?) { continuation.resume(null) }
+		override fun onResponse(response: UserItemDataDto?) {
+			continuation.resume(response!!)
+		}
+
+		override fun onError(exception: Exception?) {
+			continuation.resume(null)
+		}
 	})
 }
 
@@ -89,7 +101,7 @@ suspend fun ApiClient.getSimilarItems(item: BaseItem, limit: Int = 25): List<Bas
 }
 
 suspend fun ApiClient.getSpecialFeatures(item: BaseItem): List<BaseItem>? = suspendCoroutine { continuation ->
-	GetSpecialFeaturesAsync(TvApp.getApplication().currentUser.id, item.id, object: Response<Array<BaseItemDto>>() {
+	GetSpecialFeaturesAsync(TvApp.getApplication().currentUser.id, item.id, object : Response<Array<BaseItemDto>>() {
 		override fun onResponse(response: Array<BaseItemDto>?) {
 			continuation.resume(response!!.map { baseItemDto -> baseItemDto.liftToNewFormat() })
 		}
@@ -101,7 +113,7 @@ suspend fun ApiClient.getSpecialFeatures(item: BaseItem): List<BaseItem>? = susp
 }
 
 suspend fun ApiClient.getLocalTrailers(item: BaseItem): List<LocalTrailer>? = suspendCoroutine { continuation ->
-	GetLocalTrailersAsync(TvApp.getApplication().currentUser.id, item.id, object: Response<Array<BaseItemDto>>() {
+	GetLocalTrailersAsync(TvApp.getApplication().currentUser.id, item.id, object : Response<Array<BaseItemDto>>() {
 		override fun onResponse(response: Array<BaseItemDto>?) {
 			continuation.resume(response!!.map { baseItemDto -> baseItemDto.liftToNewFormat() as LocalTrailer })
 		}
@@ -114,8 +126,7 @@ suspend fun ApiClient.getLocalTrailers(item: BaseItem): List<LocalTrailer>? = su
 
 suspend fun ApiClient.getEpisodesOfSeason(episode: Episode): List<Episode>? = if (episode.seasonId != null) getEpisodesOfSeason(episode.seasonId) else null
 
-private suspend fun ApiClient.getEpisodesOfSeason(seasonId: String): List<Episode>? = suspendCoroutine {
-	continuation ->
+private suspend fun ApiClient.getEpisodesOfSeason(seasonId: String): List<Episode>? = suspendCoroutine { continuation ->
 	val query = StdItemQuery()
 	query.parentId = seasonId
 	query.includeItemTypes = arrayOf(BaseItemType.Episode.name)
@@ -125,7 +136,7 @@ private suspend fun ApiClient.getEpisodesOfSeason(seasonId: String): List<Episod
 
 	GetItemsAsync(query, object : Response<ItemsResult>() {
 		override fun onResponse(response: ItemsResult?) {
-			continuation.resume(response?.items?.map {it.liftToNewFormat() as Episode }?.toList())
+			continuation.resume(response?.items?.map { it.liftToNewFormat() as Episode }?.toList())
 		}
 
 		override fun onError(exception: Exception?) {
@@ -134,11 +145,13 @@ private suspend fun ApiClient.getEpisodesOfSeason(seasonId: String): List<Episod
 	})
 }
 
-suspend fun ApiClient.getAlbumsForArtist(artist: Artist): List<Album>? = suspendCoroutine { continuation ->
+suspend fun ApiClient.getAlbumsForArtist(artist: Artist): List<Album>? = getAlbumsForArtists(arrayOf(artist.id))
+
+suspend fun ApiClient.getAlbumsForArtists(artists: Array<String>): List<Album>? = suspendCoroutine { continuation ->
 	val query = ItemQuery().apply {
 		fields = FIELDS_REQUIRED_FOR_LIFT
 		userId = currentUserId
-		artistIds = arrayOf(artist.id)
+		artistIds = artists
 		recursive = true
 		includeItemTypes = arrayOf(BaseItemType.MusicAlbum.name)
 	}
@@ -146,6 +159,26 @@ suspend fun ApiClient.getAlbumsForArtist(artist: Artist): List<Album>? = suspend
 	GetItemsAsync(query, object : Response<ItemsResult>() {
 		override fun onResponse(response: ItemsResult?) {
 			continuation.resume(response?.items?.map { it.liftToNewFormat() as Album }?.toList())
+		}
+
+		override fun onError(exception: Exception?) {
+			continuation.resume(null)
+		}
+	})
+}
+suspend fun ApiClient.getSongsForAlbum(albumId: String): List<Audio>? = suspendCoroutine { continuation ->
+	val query = ItemQuery().apply {
+		fields = FIELDS_REQUIRED_FOR_LIFT
+		userId = currentUserId
+		parentId = albumId
+		recursive = true
+		includeItemTypes = arrayOf(BaseItemType.Audio.name)
+		sortBy = arrayOf(ItemFields.SortName.name)
+	}
+
+	GetItemsAsync(query, object : Response<ItemsResult>() {
+		override fun onResponse(response: ItemsResult?) {
+			continuation.resume(response?.items?.map { it.liftToNewFormat() as Audio }?.toList())
 		}
 
 		override fun onError(exception: Exception?) {

@@ -14,17 +14,19 @@ import org.jellyfin.androidtv.details.actions.PlayFromBeginningAction
 import org.jellyfin.androidtv.details.actions.ShuffleAction
 import org.jellyfin.androidtv.details.actions.ToggleFavoriteAction
 import org.jellyfin.androidtv.details.presenters.ItemPresenter
+import org.jellyfin.androidtv.details.presenters.SongPresenter
 import org.jellyfin.androidtv.details.rows.DetailsOverviewRow
-import org.jellyfin.androidtv.model.itemtypes.Artist
+import org.jellyfin.androidtv.model.itemtypes.Album
 import org.jellyfin.androidtv.util.addIfNotEmpty
-import org.jellyfin.androidtv.util.apiclient.getAlbumsForArtist
+import org.jellyfin.androidtv.util.apiclient.getAlbumsForArtists
 import org.jellyfin.androidtv.util.apiclient.getSimilarItems
+import org.jellyfin.androidtv.util.apiclient.getSongsForAlbum
 import org.jellyfin.androidtv.util.dp
 
-class ArtistDetailsFragment(private val artist: Artist) : BaseDetailsFragment<Artist>(artist) {
+class AlbumDetailsFragment(private val album: Album) : BaseDetailsFragment<Album>(album) {
 	// Action definitions
 	private val actions by lazy {
-		val item = MutableLiveData(artist)
+		val item = MutableLiveData(album)
 
 		listOf(
 			PlayFromBeginningAction(requireContext(), item),
@@ -35,8 +37,9 @@ class ArtistDetailsFragment(private val artist: Artist) : BaseDetailsFragment<Ar
 	}
 
 	// Row definitions
-	private val detailRow by lazy { DetailsOverviewRow(artist, actions, artist.images.primary, artist.images.backdrops) }
-	private val albumsRow by lazy { createListRow(getString(R.string.lbl_albums), emptyList(), ItemPresenter(requireContext(), 150.dp, 150.dp, false)) }
+	private val detailRow by lazy { DetailsOverviewRow(album, actions, album.images.primary, album.images.backdrops) }
+	private val songsRow by lazy { createVerticalListRow(getString(R.string.lbl_songs), SongPresenter()) }
+	private val relatedDiscographyRow by lazy { createListRow(getString(R.string.lbl_more_from_x, album.artist.joinToString(", ") { it.name }), emptyList(), ItemPresenter(requireContext(), 150.dp, 150.dp, false)) }
 	private val relatedItemsRow by lazy { createListRow(getString(R.string.lbl_similar_items_library), emptyList(), ItemPresenter(requireContext(), 150.dp, 150.dp, false)) }
 
 	override suspend fun onCreateAdapters(rowSelector: ClassPresenterSelector, rowAdapter: ArrayObjectAdapter) {
@@ -48,7 +51,8 @@ class ArtistDetailsFragment(private val artist: Artist) : BaseDetailsFragment<Ar
 		// Add rows
 		rowAdapter.apply {
 			add(detailRow)
-			addIfNotEmpty(albumsRow)
+			addIfNotEmpty(songsRow)
+			addIfNotEmpty(relatedDiscographyRow)
 			addIfNotEmpty(relatedItemsRow)
 		}
 	}
@@ -57,13 +61,18 @@ class ArtistDetailsFragment(private val artist: Artist) : BaseDetailsFragment<Ar
 		// Get additional information asynchronously
 		awaitAll(
 			async {
-				val albums = TvApp.getApplication().apiClient.getAlbumsForArtist(artist).orEmpty()
-				(albumsRow.adapter as ArrayObjectAdapter).apply { albums.forEach(::add) }
+				val songs = TvApp.getApplication().apiClient.getSongsForAlbum(album.id).orEmpty()
+				(songsRow.adapter as ArrayObjectAdapter).apply { songs.forEach(::add) }
 			},
 			async {
-				val relatedItems = TvApp.getApplication().apiClient.getSimilarItems(artist).orEmpty()
+				val relatedDiscography = TvApp.getApplication().apiClient.getAlbumsForArtists(album.artist.map { it.id }.toTypedArray()).orEmpty()
+				(relatedDiscographyRow.adapter as ArrayObjectAdapter).apply { relatedDiscography.forEach(::add) }
+			},
+			async {
+				val relatedItems = TvApp.getApplication().apiClient.getSimilarItems(album).orEmpty()
 				(relatedItemsRow.adapter as ArrayObjectAdapter).apply { relatedItems.forEach(::add) }
 			}
 		)
 	}
 }
+
