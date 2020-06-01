@@ -94,6 +94,9 @@ public class TvApp extends Application {
     public void onCreate() {
         super.onCreate();
         app = (TvApp) getApplicationContext();
+
+        TvAppKt.startKoin(this);
+
         playbackManager = new PlaybackManager(new AndroidDevice(this), new AndroidLogger("PlaybackManager"));
 
         registerActivityLifecycleCallbacks(new AuthenticatedUserCallbacks());

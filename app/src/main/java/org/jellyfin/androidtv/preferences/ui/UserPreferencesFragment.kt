@@ -5,25 +5,24 @@ import android.os.Build
 import android.os.Bundle
 import androidx.leanback.preference.LeanbackPreferenceFragmentCompat
 import androidx.leanback.preference.LeanbackSettingsFragmentCompat
-import androidx.preference.CheckBoxPreference
-import androidx.preference.EditTextPreference
-import androidx.preference.ListPreference
-import androidx.preference.Preference
-import androidx.preference.PreferenceDialogFragmentCompat
-import androidx.preference.PreferenceFragmentCompat
-import androidx.preference.PreferenceScreen
+import androidx.preference.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.TvApp
-import org.jellyfin.androidtv.model.LogonCredentials
+import org.jellyfin.androidtv.data.repositories.LoginCredentialsRepository
+import org.jellyfin.androidtv.preferences.UserPreferences
 import org.jellyfin.androidtv.preferences.enums.LoginBehavior
 import org.jellyfin.androidtv.preferences.enums.PreferredVideoPlayer
 import org.jellyfin.androidtv.util.DeviceUtils
 import org.jellyfin.androidtv.util.Utils
-import org.jellyfin.androidtv.util.apiclient.AuthenticationHelper
-import timber.log.Timber
-import java.io.IOException
+import org.koin.android.ext.android.inject
 
 class UserPreferencesFragment : LeanbackSettingsFragmentCompat() {
+
+
+
 	override fun onPreferenceStartInitialScreen() {
 		startPreferenceFragment(InnerUserPreferencesFragment())
 	}
@@ -54,6 +53,10 @@ class UserPreferencesFragment : LeanbackSettingsFragmentCompat() {
 	}
 
 	class InnerUserPreferencesFragment : LeanbackPreferenceFragmentCompat() {
+
+		private val userPreferences by inject<UserPreferences>()
+		private val loginCredentialsRepository by inject<LoginCredentialsRepository>()
+
 		private val externalPlayerDependencies = mapOf(
 			"pref_send_path_external" to true,
 			"pref_enable_cinema_mode" to false,
@@ -84,32 +87,36 @@ class UserPreferencesFragment : LeanbackSettingsFragmentCompat() {
 			// Update preference with custom dependencies
 			findPreference<CheckBoxPreference>("pref_auto_pw_prompt")?.isEnabled = TvApp.getApplication().configuredAutoCredentials.userDto.hasPassword
 
-			val isExternal = TvApp.getApplication().userPreferences.videoPlayer == PreferredVideoPlayer.EXTERNAL
+			val isExternal = userPreferences.videoPlayer == PreferredVideoPlayer.EXTERNAL
 			for ((key, enable) in externalPlayerDependencies)
 				findPreference<Preference>(key)?.isEnabled = if (enable) isExternal else !isExternal
 
-			val isAutoLogin = TvApp.getApplication().userPreferences.loginBehavior == LoginBehavior.AUTO_LOGIN
-			if (isAutoLogin && TvApp.getApplication().configuredAutoCredentials.userDto.id != TvApp.getApplication().currentUser.id) {
-				// Auto-login set to another user
-				findPreference<Preference>("login_behavior")?.isEnabled = false
-				findPreference<Preference>("pref_auto_pw_prompt")?.isEnabled = false
-			} else if (!isAutoLogin) {
-				findPreference<CheckBoxPreference>("pref_auto_pw_prompt")?.isEnabled = false
-			}
+			val isAutoLogin = userPreferences.loginBehavior == LoginBehavior.AUTO_LOGIN
+
+			 CoroutineScope(Dispatchers.Main).launch {
+
+				 val userId = loginCredentialsRepository.getUserId()
+
+				 if (isAutoLogin && userId != TvApp.getApplication().currentUser.id) {
+					 // Auto-login set to another user
+					 findPreference<Preference>("login_behavior")?.isEnabled = false
+					 findPreference<Preference>("pref_auto_pw_prompt")?.isEnabled = false
+				 } else if (!isAutoLogin) {
+					 findPreference<CheckBoxPreference>("pref_auto_pw_prompt")?.isEnabled = false
+				 }
+			 }
+
+
 		}
 
 		private fun addCustomBehavior() {
 			// Custom save actions
 			findPreference<ListPreference>("login_behavior")?.onPreferenceChangeListener = Preference.OnPreferenceChangeListener { _, value ->
 				if (value == LoginBehavior.AUTO_LOGIN.toString()) {
-					try {
-						val credentials = LogonCredentials(TvApp.getApplication().apiClient.serverInfo, TvApp.getApplication().currentUser)
-						AuthenticationHelper.saveLoginCredentials(credentials, TvApp.CREDENTIALS_PATH)
-					} catch (e: IOException) {
-						Timber.e(e, "Unable to save logon credentials")
+					CoroutineScope(Dispatchers.IO).launch {
+						loginCredentialsRepository.saveLoginCredentials()
 					}
 				}
-
 				return@OnPreferenceChangeListener true
 			}
 
@@ -148,7 +155,7 @@ class UserPreferencesFragment : LeanbackSettingsFragmentCompat() {
 			}
 
 			findPreference<EditLongPreference>("libvlc_audio_delay")?.apply {
-				text = TvApp.getApplication().userPreferences.libVLCAudioDelay.toString()
+				text = userPreferences.libVLCAudioDelay.toString()
 				summaryProvider = Preference.SummaryProvider<EditLongPreference> {
 					"${it.text} ms"
 				}

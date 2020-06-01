@@ -2,7 +2,6 @@ package org.jellyfin.androidtv.util.apiclient;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.text.InputType;
@@ -29,7 +28,6 @@ import org.jellyfin.apiclient.model.users.AuthenticationResult;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -177,13 +175,7 @@ public class AuthenticationHelper {
         });
     }
 
-    public static void saveLoginCredentials(LogonCredentials creds, String fileName) throws IOException {
-        TvApp app = TvApp.getApplication();
-        OutputStream credsFile = app.openFileOutput(fileName, Context.MODE_PRIVATE);
-        credsFile.write(SerializerRepository.INSTANCE.getSerializer().SerializeToString(creds).getBytes());
-        credsFile.close();
-        app.setConfiguredAutoCredentials(creds);
-    }
+
 
     public static LogonCredentials getSavedLoginCredentials(String fileName) {
         TvApp app = TvApp.getApplication();

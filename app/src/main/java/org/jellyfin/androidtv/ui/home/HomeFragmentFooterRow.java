@@ -1,15 +1,8 @@
 package org.jellyfin.androidtv.ui.home;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
-
-import org.jellyfin.androidtv.R;
-import org.jellyfin.androidtv.TvApp;
-import org.jellyfin.androidtv.preferences.ui.PreferencesActivity;
-import org.jellyfin.androidtv.presentation.CardPresenter;
-import org.jellyfin.androidtv.presentation.GridButtonPresenter;
-import org.jellyfin.androidtv.startup.SelectUserActivity;
-import org.jellyfin.androidtv.ui.GridButton;
 
 import androidx.leanback.widget.ArrayObjectAdapter;
 import androidx.leanback.widget.HeaderItem;
@@ -19,24 +12,32 @@ import androidx.leanback.widget.Presenter;
 import androidx.leanback.widget.Row;
 import androidx.leanback.widget.RowPresenter;
 
+import org.jellyfin.androidtv.R;
+import org.jellyfin.androidtv.TvApp;
+import org.jellyfin.androidtv.preferences.ui.PreferencesActivity;
+import org.jellyfin.androidtv.presentation.CardPresenter;
+import org.jellyfin.androidtv.presentation.GridButtonPresenter;
+import org.jellyfin.androidtv.startup.SelectUserActivity;
+import org.jellyfin.androidtv.ui.GridButton;
+
 public class HomeFragmentFooterRow extends HomeFragmentRow implements OnItemViewClickedListener {
     private static final int LOGOUT = 0;
     private static final int SETTINGS = 1;
 
-    private Activity activity;
+    private Context context;
 
-    public HomeFragmentFooterRow(Activity activity) {
-        this.activity = activity;
+    public HomeFragmentFooterRow(Context context) {
+        this.context = context;
     }
 
     @Override
     public void addToRowsAdapter(CardPresenter cardPresenter, ArrayObjectAdapter rowsAdapter) {
-        HeaderItem header = new HeaderItem(rowsAdapter.size(), activity.getString(R.string.lbl_settings));
+        HeaderItem header = new HeaderItem(rowsAdapter.size(), context.getString(R.string.lbl_settings));
         GridButtonPresenter presenter = new GridButtonPresenter();
 
         ArrayObjectAdapter adapter = new ArrayObjectAdapter(presenter);
-        adapter.add(new GridButton(SETTINGS, activity.getString(R.string.lbl_settings), R.drawable.tile_settings));
-        adapter.add(new GridButton(LOGOUT, activity.getString(R.string.lbl_logout), R.drawable.tile_logout));
+        adapter.add(new GridButton(SETTINGS, context.getString(R.string.lbl_settings), R.drawable.tile_settings));
+        adapter.add(new GridButton(LOGOUT, context.getString(R.string.lbl_logout), R.drawable.tile_logout));
 
         rowsAdapter.add(new ListRow(header, adapter));
     }
@@ -52,16 +53,16 @@ public class HomeFragmentFooterRow extends HomeFragmentRow implements OnItemView
                 app.setLoginApiClient(app.getApiClient());
 
                 // Open login activity
-                Intent selectUserIntent = new Intent(activity, SelectUserActivity.class);
+                Intent selectUserIntent = new Intent(context, SelectUserActivity.class);
                 selectUserIntent.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY); // Disallow back button
-                activity.startActivity(selectUserIntent);
+                context.startActivity(selectUserIntent);
 
-                activity.finish();
+                ((Activity) context).finish();
 
                 break;
             case SETTINGS:
-                Intent settingsIntent = new Intent(activity, PreferencesActivity.class);
-                activity.startActivity(settingsIntent);
+                Intent settingsIntent = new Intent(context, PreferencesActivity.class);
+                context.startActivity(settingsIntent);
                 break;
         }
 

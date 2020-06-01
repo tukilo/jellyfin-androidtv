@@ -77,6 +77,12 @@ dependencies {
 	implementation("androidx.recyclerview:recyclerview:1.1.0")
 	implementation("com.google.android:flexbox:2.0.1")
 
+	//DI Koin
+	implementation("org.koin:koin-androidx-viewmodel:2.0.1")
+	implementation("org.koin:koin-android:2.0.1")
+	implementation("org.koin:koin-java:2.0.1")
+
+
 	// Media players
 	implementation("com.amazon.android:exoplayer:2.11.3")
 	implementation("org.videolan.android:libvlc-all:3.2.5")
